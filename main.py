@@ -1,37 +1,65 @@
-from dataset import BinaryClassifierDataset 
+from dataset import BinaryRewardClassifierDataset 
 import torch
 from transforms import ToTensor 
-from torchvision import transforms, utils
+from model import train_model, visualize_model
+from torchvision import transforms, utils, models
+from torch.optim import lr_scheduler
+import torch.nn as nn
+import torch.optim as optim
 import matplotlib.pyplot as plt
 import numpy as np
 
 import os
 
-train_video_path = os.path.abspath('Data/Clean/clean_1.avi')
-train_success_frame_idx = 165 # determined from finding last case of occlusion or clear task completion
+def main():
 
-train_dataset = BinaryClassifierDataset(train_video_path, "clean_1_dataset", success_frame_idx=train_success_frame_idx, transform=transforms.Compose([ToTensor()]))
+	# Data loading + Preprocessing
 
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=4,
-                                          shuffle=True, num_workers=2)
+	video_paths = ['Data/Clean/clean_1.avi', 'Data/Clean/clean_2.avi', 'Data/Clean/clean_3.avi']
+	video_paths = [ os.path.abspath(path) for path in video_paths ]
 
-dataset_classes = train_dataset.classes
+	data_dirs = ['data/train', 'data/test', 'data/val']
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+	success_frame_idxs = [165, 104, 176] # determined from finding last case of occlusion or clear task completion
 
-def imshow(inp, title=None):
-	"""Imshow for Tensor."""
-	plt.imshow(inp.permute(1, 2, 0))
-	if title is not None:
-		plt.title(title)
-	plt.pause(0.001)  # pause a bit so that plots are updated
+	datasets = [BinaryRewardClassifierDataset(video_paths[i], data_dirs[i], success_frame_idxs[i], transform=transforms.Compose([ToTensor()])) 
+								for i in range(len(video_paths))]
 
+	dataset_names = ['train', 'test', 'val']
+	dataloaders = {}
 
-# Get a batch of training data
-inputs, classes = next(iter(train_loader))
+	for i, name in enumerate(dataset_names):
+		dataloaders[name] = torch.utils.data.DataLoader(datasets[i], batch_size=4, shuffle=True, num_workers=2)
 
-print(classes)
+	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-for i, label in enumerate(classes):
-	imshow(inputs[i], title=[dataset_classes[label]])
+	# Model + Training
+
+	model = models.resnet50(pretrained=True)
+	for param in model.parameters():
+		param.requires_grad = False
+
+	num_ftrs = model.fc.in_features
+	model.fc = nn.Sequential(
+			nn.Linear(num_ftrs, 2),
+			nn.Softmax(1),
+	)
+
+	model = model.to(device)
+
+	criterion = nn.CrossEntropyLoss()
+
+	optimizer_conv = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
+
+	# Decay LR by a factor of 0.1 every 7 epochs
+	exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=7, gamma=0.1)	
+
+	train_model(model, dataloaders, criterion, optimizer_conv, exp_lr_scheduler, device, num_epochs=25)
+
+	visualize_model(model, dataloaders, device, num_images=6)
+
+	plt.ioff()
 	plt.show()
+
+if __name__ == "__main__":
+    main()

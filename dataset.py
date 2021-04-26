@@ -13,7 +13,7 @@ from torchvision import datasets, models, transforms
 
 import os
 
-class BinaryClassifierDataset(Dataset):
+class BinaryRewardClassifierDataset(Dataset):
 	'Dataset class for data preprocessing on video for a binary classifier for computing reward'
 	
 	def __init__(self, video_path, target_dir=None, success_frame_idx=None, transform=None):
@@ -86,9 +86,3 @@ class BinaryClassifierDataset(Dataset):
 			sample = self.transform(sample)
 
 		return sample
-
-class BinaryClassifierDataLoader(DataLoader):
-	'DataLoader class for binary classifier'
-
-	def __init__(self, dataset):
-		pass

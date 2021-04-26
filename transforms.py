@@ -11,7 +11,7 @@ class ToTensor(object):
         # numpy image: H x W x C
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
-        return (torch.from_numpy(image), label)
+        return (torch.from_numpy(image).float(), label)
 
 class VaryLighting(object):
 		def __init__(self):	
