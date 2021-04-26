@@ -11,9 +11,14 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
+import wandb
+
 
 def train_model(model, dataloaders, criterion, optimizer, scheduler, device, num_epochs=25):
 		since = time.time()
+
+
+
 
 		best_model_wts = copy.deepcopy(model.state_dict())
 		best_acc = 0.0
@@ -54,11 +59,13 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, device, num
 
 								# statistics
 								running_loss += loss.item() * inputs.size(0)
+
 								running_corrects += torch.sum(preds == labels.data)
 						if phase == 'train':
 								scheduler.step()
 
 						epoch_loss = running_loss / dataset_sizes[phase]
+						wandb.log({"loss": epoch_loss})
 						epoch_acc = running_corrects.double() / dataset_sizes[phase]
 
 						print('{} Loss: {:.4f} Acc: {:.4f}'.format(

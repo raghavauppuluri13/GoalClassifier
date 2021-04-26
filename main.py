@@ -8,10 +8,22 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import numpy as np
+import wandb
 
 import os
 
 def main():
+
+	# Hyperparameters
+	config = {
+		'epochs': 25,
+		'batch_size': 4,
+		'num_workers': 2,
+		'learning_rate': 1e-3,
+		'optimizer': 'adam',
+		'step_size': 7,
+		'gamma': 0.1,
+	}
 
 	# Data loading + Preprocessing
 
@@ -29,11 +41,13 @@ def main():
 	dataloaders = {}
 
 	for i, name in enumerate(dataset_names):
-		dataloaders[name] = torch.utils.data.DataLoader(datasets[i], batch_size=4, shuffle=True, num_workers=2)
+		dataloaders[name] = torch.utils.data.DataLoader(datasets[i], batch_size=config['batch_size'], shuffle=True, num_workers=config['num_workers'])
 
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 	# Model + Training
+
+	wandb.init(config=config)
 
 	model = models.resnet50(pretrained=True)
 	for param in model.parameters():
@@ -49,17 +63,20 @@ def main():
 
 	criterion = nn.CrossEntropyLoss()
 
-	optimizer_conv = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
+	optimizer_conv = optim.SGD(model.fc.parameters(), lr=config['learning_rate'], momentum=0.9)
 
 	# Decay LR by a factor of 0.1 every 7 epochs
-	exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=7, gamma=0.1)	
+	exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=config['step_size'], gamma=config['gamma'])	
 
-	train_model(model, dataloaders, criterion, optimizer_conv, exp_lr_scheduler, device, num_epochs=25)
+	train_model(model, dataloaders, criterion, optimizer_conv, exp_lr_scheduler, device, num_epochs=config['epochs'])
 
 	visualize_model(model, dataloaders, device, num_images=6)
 
 	plt.ioff()
 	plt.show()
+
+	save_path = 'last_weights.pt'
+	torch.save(model.state_dict(), save_path)	
 
 if __name__ == "__main__":
     main()

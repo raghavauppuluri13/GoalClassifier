@@ -1,0 +1,22 @@
+{
+    "os": "Linux-5.4.0-58-generic-x86_64-with-glibc2.29",
+    "python": "3.8.5",
+    "heartbeatAt": "2021-04-26T06:35:24.052439",
+    "startedAt": "2021-04-26T06:35:22.932319",
+    "docker": null,
+    "cpu_count": 4,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": null,
+        "commit": "9269fe32dd950570ba3304cc753dcbb106ba19d6"
+    },
+    "email": "raghava.upp13@gmail.com",
+    "root": "/home/raghavauppuluri/research/deep_learning/binary_classifer",
+    "host": "raghava-linux-mac",
+    "username": "raghavauppuluri",
+    "executable": "/home/raghavauppuluri/research/deep_learning/deep_learning_venv/bin/python"
+}
