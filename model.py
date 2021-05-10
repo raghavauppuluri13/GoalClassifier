@@ -16,42 +16,13 @@ import copy
 import wandb
 
 class BinaryRewardClassifier:
-	def __init__(self, config=None):
-
-		if config is None:
-			config = {
-				'num_epochs': 25,
-				'batch_size': 4,
-				'num_workers': 2,
-				'learning_rate': 1e-3,
-				'optimizer': 'adam',
-				'step_size': 7,
-				'gamma': 0.1, }
+	def __init__(self, model, config):
 
 		self.config = config
-		
-		self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-		# Model + Training
-
 		wandb.init(config=self.config)
 
-		self.model = models.resnet50(pretrained=True)
-
-		for param in self.model.parameters():
-			param.requires_grad = False
-
-		num_ftrs = self.model.fc.in_features
-
-		self.model.fc = nn.Linear(num_ftrs, 2)
-
-		'''
-		self.model.fc = nn.Sequential(
-				nn.Linear(num_ftrs, 2),
-				nn.Softmax(1),
-		)
-		'''
-		self.model = self.model.to(self.device)
+		self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+		self.model = model.to(self.device)
 
 		self.criterion = nn.CrossEntropyLoss()
 
@@ -60,7 +31,6 @@ class BinaryRewardClassifier:
 		else:
 			self.optimizer = optim.SGD(self.model.fc.parameters(), lr=config['learning_rate'], momentum=0.9)
 
-		# Decay LR by a factor of 0.1 every 7 epochs
 		self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=config['step_size'], gamma=config['gamma'])	
 
 	def train_model(self, dataloaders, dataset_sizes, save_path="final_weights.pt"):
