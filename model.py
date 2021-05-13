@@ -1,13 +1,10 @@
 import numpy as np
 import torch
 import torchvision
-import skvideo.io  
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torchvision import datasets, models, transforms
-
-from utility import imshow
 
 import matplotlib.pyplot as plt
 import time
@@ -31,7 +28,7 @@ class BinaryRewardClassifier:
 		else:
 			self.optimizer = optim.SGD(self.model.fc.parameters(), lr=config['learning_rate'], momentum=0.9)
 
-		self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=config['step_size'], gamma=config['gamma'])	
+		self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=config['step_size'], gamma=config['gamma'])
 
 	def train_model(self, dataloaders, dataset_sizes, save_path="final_weights.pt"):
 		since = time.time()
@@ -100,7 +97,7 @@ class BinaryRewardClassifier:
 				time_elapsed // 60, time_elapsed % 60))
 		print('Best val Acc: {:4f}'.format(best_acc))
 
-		torch.save(self.model.state_dict(), save_path)	
+		torch.save(self.model.state_dict(), save_path)
 
 		# load best model weights
 		self.model.load_state_dict(best_model_wts)
