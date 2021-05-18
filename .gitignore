@@ -4,3 +4,4 @@ wandb
 *dataset
 *pycache*
 *.swp
+runs

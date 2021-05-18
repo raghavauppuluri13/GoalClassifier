@@ -1,8 +1,19 @@
 import os
 import pathlib
 import cv2
+import numpy as np
 
 import matplotlib as plt
+
+def image_per_channel_mean(image):
+    return np.array([np.mean(np.reshape(image[:,:,i], -1)) for i in range(3)])
+    
+def dataset_per_channel_mean(dataset):
+    dataset_mean = 0
+    for img, target in dataset:
+        img = img.numpy()
+        dataset_mean = dataset_mean + image_per_channel_mean(img)  
+    return dataset_mean / len(dataset) 
 
 def create_bc_dataset_from_videos(video_paths, split_idxs, target_dir):
     '''
