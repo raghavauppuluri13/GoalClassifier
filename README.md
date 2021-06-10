@@ -1,4 +1,4 @@
-# BinaryRewardClassifier
+# GoalClassifier
 Building a binary reward classifier for RL task
 
 ## Training progress
