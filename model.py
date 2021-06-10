@@ -1,4 +1,5 @@
 import numpy as np
+
 import torch
 import torchvision
 import torch.nn as nn
@@ -11,7 +12,7 @@ import time
 import os
 import copy
 
-class BinaryRewardClassifier:
+class GoalClassifier:
     def __init__(self, model, hparams, vis):
 
         self.hparams = hparams
@@ -19,6 +20,7 @@ class BinaryRewardClassifier:
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
+        self.save_path = "final_weights.pt"
 
         self.criterion = nn.CrossEntropyLoss()
 
@@ -30,6 +32,7 @@ class BinaryRewardClassifier:
         self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=hparams['step_size'], gamma=hparams['gamma'])
 
     def train_model(self, dataloaders, dataset_sizes, save_path="final_weights.pt"):
+        self.save_path = save_path
         since = time.time()
 
         best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -120,8 +123,30 @@ class BinaryRewardClassifier:
             },
         )
 
-        torch.save(self.model.state_dict(), save_path)
+        torch.save(best_model_wts, save_path)
 
         # load best model weights
         self.model.load_state_dict(best_model_wts)
-        return self.model
+
+    def test(self, testloader, from_save_path=True):
+        if from_save_path:
+            self.model.load_state_dict(torch.load(self.save_path))
+        self.model.eval()
+
+        correct = 0
+        total = 0
+        # since we're not training, we don't need to calculate the gradients for our outputs
+        with torch.no_grad():
+            for i, data in enumerate(testloader):
+                inputs, labels = data
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                
+                # calculate outputs by running images through the network
+                outputs = self.model(inputs)
+                # the class with the highest energy is what we choose as prediction
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                print('Accuracy of the network on %d test images: %d %%' % (
+                    i, 100 * correct / total))

@@ -1,32 +1,31 @@
 import os
+import sys
 
 import torch
 import torchvision
 from torchvision import transforms, utils, models
 from torchvision.transforms import ToTensor, Compose, Normalize
 
-from torch.optim import lr_scheduler
+from torch.utils.data.dataset import TensorDataset
 import torch.nn as nn
-import torch.optim as optim
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utility import create_bc_dataset_from_videos, dataset_per_channel_mean
+from utility import create_bc_dataset_from_videos 
 from dataset import TransformDataset
-from model import BinaryRewardClassifier
+from model import GoalClassifier
 from tensorboard_vis import Visualizer
 
-from test import test_batch
 def main():
 
     # Hyperparameters
     hparams = {
-        'num_epochs': 50,
+        'num_epochs': 30,
         'layer_size': 50,
-        'batch_size': 5,
+        'batch_size': 20,
         'num_workers': 2,
-        'learning_rate': 1e-3,
+        'learning_rate': 1e-4,
         'dropout_prob': 0.5,
         'weight_decay': 0.001,
         'optimizer': 'adam',
@@ -46,42 +45,54 @@ def main():
     split_idxs = [165, 104, 176] # determined from finding last case of occlusion or clear task completion
 
     #create_bc_dataset_from_videos(video_paths, split_idxs, target_dir)
-    # Split dataset
+    #create_bc_dataset_from_videos([os.path.abspath('Data/Clean/test/clean_4.mp4')], [sys.maxsize], 'test_' + target_dir)
 
+    # Split dataset
     dataset = torchvision.datasets.ImageFolder(root=target_dir, transform=ToTensor())
-    print(len(dataset))
-    train_dataset, valid_dataset, test_dataset = torch.utils.data.random_split(
+    test_dataset = torchvision.datasets.ImageFolder(root='test_' + target_dir, transform=ToTensor())
+    train_dataset, valid_dataset = torch.utils.data.random_split(
         dataset,
-        (round(0.4 * len(dataset)), round(0.4 * len(dataset)), round(0.199 * len(dataset))),
-        #(5, 10, len(dataset) - 15),
+        (round(0.6 * len(dataset)), round(0.4 * len(dataset))),
     )
 
-    mean = dataset_per_channel_mean(dataset)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=len(train_dataset), num_workers=1)
+    data = next(iter(train_loader))[0]
+    train_mean = tuple(data.mean(dim=(0,2,3)).tolist())
+    train_std = tuple(data.std(dim=(0,2,3)).tolist())
+    print(train_mean)
+    print(train_std)
+
     data_transform = transforms.Compose(
         [
             Normalize(
-                mean=mean, std=[1,1,1]
+               mean=train_mean,
+               std=train_std 
             ),
+            '''
+            Lambda(
+              lambda: 
+            )
+            '''
         ]
     )
 
     classes = dataset.class_to_idx
-    train_dataset = TransformDataset(train_dataset, data_transform)
+    #train_dataset = TransformDataset(train_dataset, data_transform)
 
-    train_dataset_loader = torch.utils.data.DataLoader(
+    train_loader = torch.utils.data.DataLoader(
                 train_dataset, batch_size=hparams['batch_size'], shuffle=True, num_workers=hparams['num_workers']
     )
-    valid_dataset_loader = torch.utils.data.DataLoader(
+    valid_loader = torch.utils.data.DataLoader(
                 valid_dataset, batch_size=hparams['batch_size'], shuffle=True, num_workers=hparams['num_workers']
     )
-    test_dataset_loader = torch.utils.data.DataLoader(
+    test_loader = torch.utils.data.DataLoader(
                 test_dataset, batch_size=hparams['batch_size'], shuffle=False, num_workers=hparams['num_workers']
     )
 
     dataloaders = {
-        "train": train_dataset_loader,
-        "val": valid_dataset_loader,
-        "test": test_dataset_loader,
+        "train": train_loader,
+        "val": valid_loader,
+        "test": test_loader,
     }
 
     # Model + Training
@@ -98,6 +109,10 @@ def main():
         nn.BatchNorm1d(hparams['layer_size']),
         nn.ReLU(),
         nn.Dropout(hparams['dropout_prob']),
+        nn.Linear(hparams['layer_size'], hparams['layer_size']),
+        nn.BatchNorm1d(hparams['layer_size']),
+        nn.ReLU(),
+        nn.Dropout(hparams['dropout_prob']),
         nn.Linear(hparams['layer_size'], 2),
     )
 
@@ -109,7 +124,6 @@ def main():
     #model.apply(init_normal)
 
     # Pretraining visualization
-    print(model)
 
     vis = Visualizer()
     phase = 'train' 
@@ -117,11 +131,11 @@ def main():
     vis.visualize_batch(batch, phase)
     vis.visualize_model(model, batch)
 
-    classifier = BinaryRewardClassifier(model, hparams, vis)
+    classifier = GoalClassifier(model, hparams, vis)
 
     dataset_sizes = {"train":len(train_dataset), "val":len(valid_dataset), "test":len(test_dataset)}
-    print(dataset_sizes)
     classifier.train_model(dataloaders, dataset_sizes)
+    classifier.test(dataloaders['test'], False)
 
     vis.close()
 
